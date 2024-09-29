@@ -104,53 +104,36 @@ const deleteStudentSchema = zod.string().min(9).max(10)
 
 
 
- 
 
-app.get("/allstudents", (req, res) => {
-    res.send(students)
-})
 
-app.get("/marks", (req, res) => {
+
+//Get marks input validation middleware
+const validateGetMarks = (req, res, next) => {
     const { roll_number } = req.headers
-
     let validateInput = getMarksSchema.safeParse(roll_number)
     if (validateInput.success) {
-        const student = students.find((st) => st.roll_number === roll_number)
-        if (!student) {
-            return res.status(404).send({ msg : "student not found"})
-        }
-        return res.send({
-            name: student.name,
-            roll_number: student.roll_number,
-            marks : student.marks
-        })
+        next()
     } else {
-        return res.status(400).send({msg:"wrong input format beta"})
+        return res.status(400).send({msg: "Invalid Input Format Beta"})
     }
-   
-})
+}
 
-app.get("/feedue", (req, res) => {
+
+
+
+//get feedues input validation middleware
+const validateGetFeedue = (req, res, next) => {
     const { roll_number } = req.query
-
-    const validateInput = getFeedueSchema.safeParse(roll_number)
+    let validateInput = getFeedueSchema.safeParse(roll_number)
     if (validateInput.success) {
-        const student = students.find((st) => st.roll_number === roll_number)
-        if (!student) {
-           return res.status(404).send({ msg : "student not found"})
-        }
-        return res.send({
-          name: student.name,
-          roll_number: student.roll_number,
-          fee_due: student.fee_dues
-        })
+        next()
     } else {
-        return res.status(400).send({msg:"wrong input format beta"})
+        return res.status(400).send({msg: "Invalid Input Format Beta"})
     }
-})
+}
 
-
-app.post("/addstudent", (req, res) => {
+//post addstudent input validation middleware
+const validatePostAddStudent = (req, res, next) => {
     const { name, roll_number, year, section, fee_dues, marks } = req.body
     let addstud = {
         name: name,
@@ -160,12 +143,98 @@ app.post("/addstudent", (req, res) => {
         fee_dues: fee_dues,
         marks: marks
     }
-    const validateInput = postAddStudentSchema.safeParse(addstud)
+    let validateInput = postAddStudentSchema.safeParse(addstud)
     if (validateInput.success) {
-        let student = students.find((st) => st.roll_number === roll_number)
-        if (student) {
-           return res.status(404).send({ msg : `roll number already exist beta`})
-        } else {
+        next()
+    } else {
+        return res.status(400).send({msg : "Invalid Input Format Beta"})
+    }
+}
+
+//put updatefee input validation middleware
+const validatePutUpdateFee = (req, res, next) => {
+    const { roll_number, newFee } = req.body; 
+    
+    let validateInput = putUpdateFeeSchema.safeParse({
+        roll_number: roll_number,
+        newFee: newFee
+    })
+    if (validateInput.success) {
+        next()
+    } else {
+        return res.status(400).send({msg:"Invalid Input Format Beta"})
+    }
+}
+
+//delete deletestudent input validation middleware
+const validateDeleteStudent = (req, res, next) => {
+    const roll_number = req.params.id;
+    const validateInput = deleteStudentSchema.safeParse(roll_number)
+    if (validateInput.success) { 
+        next()
+    } else {
+        return res.status(400).send({msg: "Invalid Input Format Beta"})
+    }
+}
+
+
+app.get("/allstudents", (req, res) => {
+    res.send(students)
+})
+
+
+
+
+app.get("/marks",validateGetMarks, (req, res) => {
+    const { roll_number } = req.headers
+    const student = students.find(st => st.roll_number === roll_number)
+    if (!student) {
+        return res.status(400).send({msg:"student not found"})
+    } else {
+        return res.send({
+            name: student.name,
+            roll_number: student.roll_number,
+            marks: student.marks
+        })
+    }
+})
+
+
+
+
+app.get("/feedue",validateGetFeedue, (req, res) => {
+    const { roll_number } = req.query
+    let student = students.find(st => st.roll_number === roll_number)
+    if (!student) {
+        return res.status(400).send({msg:"student not found"})
+    } else {
+        return res.send({
+            name: student.name,
+            roll_number: student.roll_number,
+            fee_due: student.fee_dues
+        })
+    }
+})
+
+
+
+
+
+
+app.post("/addstudent", validatePostAddStudent, (req, res) => {
+    const { name, roll_number, year, section, fee_dues, marks } = req.body
+    let addstud = {
+        name: name,
+        roll_number: roll_number,
+        year: year,
+        section: section,
+        fee_dues: fee_dues,
+        marks: marks
+    }
+    let student = students.find((st) => st.roll_number === roll_number)
+    if (student) {
+        return res.status(404).send({ msg: `roll number already exist beta` })
+    } else {
         const newstudents = {
             name: name,
             roll_number: roll_number,
@@ -180,54 +249,36 @@ app.post("/addstudent", (req, res) => {
             msg: "Student added successfully.",
             ...addstud
         });
-        
-        }
-    } else {
-        return res.status(400).send({msg:"wrong input format beta"})
     }
-    
 })
 
 
-app.put("/updatefee", (req, res) => {
-    const { roll_number, newFee } = req.body;  
-
-    let validateInput = putUpdateFeeSchema.safeParse({ roll_number: roll_number, newFee: parseInt(newFee) })
-    if (validateInput.success) {
-        let student = students.find((st) => st.roll_number === roll_number);
-
-        if (!student) {
-           return res.status(404).send({ msg: "Student not found" });
-        } else {
-           student.fee_dues = validateInput.data.newFee;
-           return res.send({
-               ...student,
-        });
-    }
+app.put("/updatefee", validatePutUpdateFee, (req, res) => {
+    const { roll_number, newFee } = req.body;
+    let student = students.find((st) => st.roll_number === roll_number);
+    if (!student) {
+        return res.status(404).send({ msg: "Student not found" });
     } else {
-        return res.status(400).send({ msg:"wrong input format beta" })
-    }
+        student.fee_dues = parseInt(newFee)
+        return res.send({
+            ...student,
+        })
   
-});
+    }
+})
 
 
-app.delete("/deletestudent/:id", (req, res) => {
+
+app.delete("/deletestudent/:id", validateDeleteStudent, (req, res) => {
     const roll_number = req.params.id;
+    let studentIndex = students.findIndex(st => st.roll_number === roll_number);
 
-   
-    let validateInput = deleteStudentSchema.safeParse(roll_number);
-    if (validateInput.success) {
-        let studentIndex = students.findIndex(st => st.roll_number === roll_number);
-
-        if (studentIndex === -1) {
-            return res.status(404).send({ msg: "Student not found" }); 
-        } else {  
-            students.splice(studentIndex, 1);
-            return res.send({ msg: "Student deleted successfully", students });
-        }
-    } else {
-        return res.status(400).send({ msg:"wrong input format beta" });
-    }   
+    if (studentIndex === -1) {
+        return res.status(404).send({ msg: "Student not found" }); 
+    } else {  
+        students.splice(studentIndex, 1);
+        return res.send({ msg: "Student deleted successfully", students });
+    }
 });
 
 
